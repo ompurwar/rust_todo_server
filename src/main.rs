@@ -1,5 +1,4 @@
 mod db;
-mod todo_modal;
 mod todos;
 
 use actix_web::middleware::Logger;
