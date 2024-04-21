@@ -1,5 +1,4 @@
-use chrono::Utc;
-use log::debug;
+use log::{debug, error};
 use mongodb::{Collection, Database};
 
 // src/todos/repository.rs
@@ -16,15 +15,18 @@ impl TodoRepository {
         }
     }
 
-    pub async fn save(&self, todo: &Todo) -> Result<(), String> {
+    pub async fn save(&self, todo: &Todo) -> Result<String, String> {
         // Implement database saving logic here
 
         match self.todo_collection.insert_one(todo, None).await {
             Ok(result) => {
                 debug!("{:#?}", result);
-                Ok(())
+                Ok(result.inserted_id.to_string())
             }
-            Err(err) => Err("todo nahi bna :(".to_string()),
+            Err(err) => {
+                error!("{:#?}", err);
+                Err("todo nahi bna :(".to_string())
+            }
         }
     }
 }
