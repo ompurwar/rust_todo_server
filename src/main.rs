@@ -1,9 +1,19 @@
-use actix_web::{error::ResponseError, HttpResponse};
-use actix_web::{get, rt::task::spawn_blocking, web, App, HttpServer, Responder, Result};
-use derive_more::Display; // Crate to easily implement display traits
-use log::{error, info};
+mod db;
+mod todo_modal;
+mod todos;
 
-use std::{io::Error, sync::Mutex, time::Duration};
+use actix_web::middleware::Logger;
+use actix_web::post;
+use actix_web::{error::ResponseError, HttpResponse};
+use actix_web::{web, App, HttpServer, Result};
+use db::create_db;
+use derive_more::Display;
+use dotenv::dotenv;
+use env_logger::Env;
+use log::{debug, error};
+
+use std::env;
+use todos::{dto::CreateTodoDto, repository::TodoRepository};
 
 #[derive(Debug, Display)]
 pub enum MyError {
@@ -26,55 +36,50 @@ impl ResponseError for MyError {
     }
 }
 
-struct AppStateWithCounter {
-    counter: Mutex<i32>,
-}
-
-#[get("/users/{user_id}/{friend}")]
-async fn count_and_respond(
-    data: web::Data<AppStateWithCounter>,
-    path: web::Path<(String, String)>,
+#[post("todo")]
+async fn create_todo(
+    db_client: web::Data<TodoRepository>,
+    todo: web::Json<CreateTodoDto>,
 ) -> Result<HttpResponse> {
-    let (user_id, friend) = path.into_inner();
-    info!("{user_id},{friend}"); // Using structured logging
+    debug!("Received TODO: {:#?}", todo);
 
-    let mut counter = data.counter.lock().map_err(|e| MyError::ServerError)?;
-
-    *counter += 1;
-    info!("Request number: {counter}");
-
-    let result = spawn_blocking(heavy_work)
-        .await
-        .map_err(|_| MyError::ServerError)??;
-    Ok(HttpResponse::Ok().body(format!(
-        "Request number: {counter} {:?} | {user_id} and {friend} are friends",
-        result
-    )))
-}
-
-fn heavy_work() -> Result<u128, MyError> {
-    let mut cumt: u128 = 1;
-    for i in 1..10 {
-        cumt = cumt.checked_mul(i).ok_or(MyError::OverflowError)?;
+    let result = db_client.save(&todo.into_inner().into()).await;
+    match result {
+        Ok(_) => Ok(HttpResponse::Ok().body("todo added")),
+        Err(err) => {
+            error!("{:#?}", err);
+            Ok(HttpResponse::InternalServerError().body(err.to_string()))
+        }
     }
-    Ok(cumt)
+
+    // let result = spawn_blocking(heavy_work)
+    //     .await
+    //     .map_err(|_| MyError::ServerError)??;
+    //Ok(HttpResponse::Created().body(format!("Request processed ",)))
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    env_logger::init();
-    let counter = web::Data::new(AppStateWithCounter {
-        counter: Mutex::new(0),
-    });
+    dotenv().ok();
+    env_logger::init_from_env(Env::default().default_filter_or("debug"));
+    let DB_NAME: String =
+        env::var("MONGO_INITDB_DATABASE").expect("MONGO_INITDB_DATABASE must be set");
+    let db = create_db(&DB_NAME).await;
+    // let counter = web::Data::new(AppStateWithCounter {
+    //     counter: Mutex::new(0),
+    // });
 
     HttpServer::new(move || {
         App::new()
-            .app_data(counter.clone())
-            .service(count_and_respond)
+            .wrap(Logger::default())
+            .wrap(Logger::new("%a %{User-Agent}i"))
+            // .app_data(counter.clone())
+            .app_data(web::Data::new(TodoRepository::new(&db)))
+            .service(create_todo)
         // .route("/", web::get().to(count_and_respond))
     })
     .workers(2)
-    .bind(("192.168.161.182", 8080))?
+    .bind(("localhost", 8080))?
     .run()
     .await
 }
