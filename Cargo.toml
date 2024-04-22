@@ -10,6 +10,7 @@ chrono = { version = "0.4.38", features = ["serde"] }
 derive_more = "0.99.17"
 dotenv = "0.15.0"
 env_logger = "0.11.3"
+futures-util = { version = "0.3.30", features = ["futures_01"] }
 log = "0.4.21"
 mongodb = "2.8.2"
 serde = { version = "1.0.198", features = ["derive"] }
