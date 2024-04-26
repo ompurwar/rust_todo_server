@@ -35,7 +35,10 @@ impl TodoRepository {
         let filter = doc! {};
         let mut vec = vec![];
 
-        let find_options = FindOptions::builder().sort(doc! { "title": 1 }).build();
+        let find_options = FindOptions::builder()
+            .sort(doc! { "title": 1 })
+            .limit(100)
+            .build();
         let cursor = self.todo_collection.find(filter, find_options).await;
         match cursor {
             Ok(mut c) => {
