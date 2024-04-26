@@ -17,10 +17,7 @@ pub enum ToDoState {
 pub struct Todo {
     pub title: String,
     pub state: ToDoState,
-    #[serde(
-        skip_serializing_if = "Option::is_none",
-        serialize_with = "serialize_bson_datetime"
-    )]
+
     pub created_at: Option<BsonDateTime>, // Now using bson DateTime without chrono serialization
 }
 
@@ -35,22 +32,4 @@ impl From<CreateTodoDto> for Todo {
             created_at: Some(bson_dt),
         }
     }
-}
-
-fn serialize_bson_datetime<S>(date: &Option<BsonDateTime>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    match date {
-        Some(d) => serializer.serialize_str(&d.to_chrono().to_rfc3339()),
-        None => serializer.serialize_none(),
-    }
-}
-
-fn deserialize_bson_datetime<'de, D>(deserializer: D) -> Result<Option<BsonDateTime>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    // Custom deserialization logic can be implemented if necessary
-    unimplemented!()
 }
