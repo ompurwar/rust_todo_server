@@ -1,4 +1,5 @@
 mod db;
+mod parser;
 mod todos;
 
 use actix_web::middleware::Logger;
@@ -13,7 +14,10 @@ use log::{debug, error};
 
 use std::env;
 use todos::{dto::CreateTodoDto, repository::TodoRepository};
-
+#[derive(Debug, serde::Deserialize)]
+struct ParseReq {
+    code_block: String,
+}
 #[derive(Debug, Display)]
 pub enum MyError {
     #[display(fmt = "Internal Server Error")]
@@ -57,8 +61,25 @@ async fn get_todo(db_client: web::Data<TodoRepository>) -> Result<HttpResponse> 
 
     let result = db_client.get().await;
     match result {
-        Ok(todos) => Ok(HttpResponse::Ok().json(todos)),
+        Ok(todos) => {
+            let td: Vec<todos::dto::GetTodoDto> = todos.into_iter().map(|t| t.into()).collect();
+
+            Ok(HttpResponse::Ok().json(td))
+        }
         //       Ok(todos) => Ok(HttpResponse::Ok().body(todos)),
+        Err(err) => {
+            error!("{:#?}", err);
+            Ok(HttpResponse::InternalServerError().body(err.to_string()))
+        }
+    }
+}
+#[post("parse")]
+async fn parse(payload: web::Json<ParseReq>) -> Result<HttpResponse> {
+    debug!("post parse req received");
+    let mut p = parser::parser::Parser::new();
+    let result = p.parse(&payload.code_block.to_string());
+    match result {
+        Ok(ast) => Ok(HttpResponse::Ok().json(ast)),
         Err(err) => {
             error!("{:#?}", err);
             Ok(HttpResponse::InternalServerError().body(err.to_string()))
@@ -73,7 +94,9 @@ async fn main() -> std::io::Result<()> {
     let DB_NAME: String =
         env::var("MONGO_INITDB_DATABASE").expect("MONGO_INITDB_DATABASE must be set");
     let db = create_db(&DB_NAME).await;
-
+    let mut p = parser::parser::Parser::new();
+    let ast = p.parse(&"\"w\"".to_string());
+    println!("{:#?}", ast);
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
@@ -82,9 +105,10 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(TodoRepository::new(&db)))
             .service(create_todo)
             .service(get_todo)
+            .service(parse)
         // .route("/", web::get().to(count_and_respond))
     })
-    .workers(2)
+    .workers(12)
     .bind(("localhost", 8080))?
     .run()
     .await
