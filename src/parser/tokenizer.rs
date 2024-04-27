@@ -21,17 +21,26 @@ pub enum TokenTypes {
     MULTIPLY,
     DIVIDE,
     EOF,
+    COMMENT,
+    NEWLINE,
 }
-const SPEC: [(&str, TokenTypes); 9] = [
+const SPEC: [(&str, TokenTypes); 11] = [
+    (r"^ ", TokenTypes::WHITESPACE),
+    (r"^//.*", TokenTypes::COMMENT),
+    (r"^\n+", TokenTypes::NEWLINE),
     (r"^(\d+)", TokenTypes::NUMBER),
     (r"^'([^'\\]*(?:\\.[^'\\]*)*)'", TokenTypes::STRING),
     (r#"^"[^"]*""#, TokenTypes::STRING),
-    (r"^ ", TokenTypes::WHITESPACE),
     (r"^\+", TokenTypes::PLUS),
     (r"^-", TokenTypes::MINUS),
     (r"^=", TokenTypes::EQUALS),
     (r"^\*", TokenTypes::MULTIPLY),
     (r"^\/", TokenTypes::DIVIDE),
+];
+const SKIPPABLES: [TokenTypes; 3] = [
+    TokenTypes::WHITESPACE,
+    TokenTypes::COMMENT,
+    TokenTypes::NEWLINE,
 ];
 #[derive(PartialEq, Debug, Clone, Serialize)]
 pub struct Token {
@@ -75,7 +84,7 @@ impl<'a> Tokenizer<'a> {
             let re = Regex::new(re_str).unwrap();
             let text_slice = &self.string[self.cursor..];
             debug!("=====================================================");
-            debug!("Text slice: {}", text_slice);
+            debug!("Text slice:[{}]", text_slice);
             if let Some(mat) = re.find(text_slice) {
                 debug!(
                     "Matched token: {:?} and type is : {:?}",
@@ -84,6 +93,11 @@ impl<'a> Tokenizer<'a> {
                 );
                 let start = self.cursor + mat.start();
                 let end = self.cursor + mat.end();
+                if SKIPPABLES.contains(token_type) {
+                    self.cursor = end;
+                    debug!("Skipping: {:?}", token_type);
+                    return self.get_next_token();
+                }
 
                 let token = Token {
                     token_type: *token_type,

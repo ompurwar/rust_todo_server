@@ -83,11 +83,6 @@ impl<'a> Parser<'a> {
             Some(token) => match token.token_type {
                 TokenTypes::NUMBER => Ok(self.numeric_literal()),
                 TokenTypes::STRING => Ok(self.string_literal()),
-                TokenTypes::WHITESPACE => {
-                    debug!("Skipping white space {}", token.value);
-                    self.eat(TokenTypes::WHITESPACE);
-                    self.literal()
-                }
                 _ => {
                     let msg = format!("Unexpected Literal Production: {:?}", token);
                     error!("{}", msg);
@@ -98,16 +93,6 @@ impl<'a> Parser<'a> {
                 let msg = format!("Unexpected end of input");
                 error!("{}", msg);
                 Err(msg)
-            }
-        }
-    }
-    fn white_space(&mut self) {
-        // Consume white space
-        while let Some(token) = &self.lookahead {
-            if token.token_type == TokenTypes::WHITESPACE {
-                self.eat(TokenTypes::WHITESPACE);
-            } else {
-                break;
             }
         }
     }
