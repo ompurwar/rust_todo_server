@@ -22,11 +22,14 @@ pub enum TokenTypes {
     DIVIDE,
     EOF,
     COMMENT,
+    MULTILINECOMMENT,
     NEWLINE,
 }
-const SPEC: [(&str, TokenTypes); 11] = [
+
+const SPEC: [(&str, TokenTypes); 12] = [
     (r"^ ", TokenTypes::WHITESPACE),
     (r"^//.*", TokenTypes::COMMENT),
+    (r"^/\*[\s\S]*?\*/", TokenTypes::MULTILINECOMMENT),
     (r"^\n+", TokenTypes::NEWLINE),
     (r"^(\d+)", TokenTypes::NUMBER),
     (r"^'([^'\\]*(?:\\.[^'\\]*)*)'", TokenTypes::STRING),
@@ -37,7 +40,8 @@ const SPEC: [(&str, TokenTypes); 11] = [
     (r"^\*", TokenTypes::MULTIPLY),
     (r"^\/", TokenTypes::DIVIDE),
 ];
-const SKIPPABLES: [TokenTypes; 3] = [
+const SKIPPABLES: [TokenTypes; 4] = [
+    TokenTypes::MULTILINECOMMENT,
     TokenTypes::WHITESPACE,
     TokenTypes::COMMENT,
     TokenTypes::NEWLINE,

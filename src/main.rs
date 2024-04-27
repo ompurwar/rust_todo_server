@@ -95,7 +95,16 @@ async fn main() -> std::io::Result<()> {
         env::var("MONGO_INITDB_DATABASE").expect("MONGO_INITDB_DATABASE must be set");
     let db = create_db(&DB_NAME).await;
     let mut p = parser::parser::Parser::new();
-    let ast = p.parse(&"\"w\"".to_string());
+    let program = "/**
+     * @param {string} s
+     * @return {number}
+     */
+    \"hello\"
+
+    // Number
+    42
+    ";
+    let ast = p.parse(&program.to_string());
     println!("{:#?}", ast);
     HttpServer::new(move || {
         App::new()
