@@ -13,5 +13,6 @@ env_logger = "0.11.3"
 futures-util = { version = "0.3.30", features = ["futures_01"] }
 log = "0.4.21"
 mongodb = "2.8.2"
+regex = "1.10.4"
 serde = { version = "1.0.198", features = ["derive"] }
 tokio = "1.37.0"

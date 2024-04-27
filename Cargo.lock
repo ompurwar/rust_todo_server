@@ -2066,6 +2066,7 @@ dependencies = [
  "futures-util",
  "log",
  "mongodb",
+ "regex",
  "serde",
  "tokio",
 ]
